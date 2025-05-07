@@ -5,7 +5,7 @@ const StatsCard = ({ title, value, icon }) => {
           return (
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
+              className="h-5 w-5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -22,7 +22,7 @@ const StatsCard = ({ title, value, icon }) => {
           return (
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
+              className="h-5 w-5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -31,7 +31,7 @@ const StatsCard = ({ title, value, icon }) => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                d="M5 13l4 4L19 7"
               />
             </svg>
           )
@@ -39,7 +39,7 @@ const StatsCard = ({ title, value, icon }) => {
           return (
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
+              className="h-5 w-5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -48,7 +48,7 @@ const StatsCard = ({ title, value, icon }) => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
           )
@@ -56,7 +56,7 @@ const StatsCard = ({ title, value, icon }) => {
           return (
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
+              className="h-5 w-5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -75,12 +75,16 @@ const StatsCard = ({ title, value, icon }) => {
     }
   
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center">
-          <div className="flex-shrink-0 bg-emerald-100 rounded-md p-3 text-emerald-600">{renderIcon()}</div>
-          <div className="ml-5">
-            <p className="text-sm font-medium text-gray-500">{title}</p>
-            <p className="text-2xl font-semibold text-gray-900">{value}</p>
+      <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow duration-200">
+        <div className="flex items-start">
+          <div className="flex-shrink-0 bg-emerald-50 rounded-lg p-3 text-emerald-600">
+            {renderIcon()}
+          </div>
+          <div className="ml-4">
+            <p className="text-sm font-medium text-gray-500 tracking-wide">{title}</p>
+            <p className="mt-1 text-2xl font-semibold text-gray-900">
+              {value}
+            </p>
           </div>
         </div>
       </div>
@@ -88,4 +92,3 @@ const StatsCard = ({ title, value, icon }) => {
   }
   
   export default StatsCard
-  

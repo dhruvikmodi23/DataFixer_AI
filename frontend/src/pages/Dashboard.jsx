@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
-// import { useToast } from "../hooks/use-toast"
-// import StatsCard from "../components/StatsCard"
-// import RecentFilesList from "../components/RecentFilesList"
+import { useToast } from "../hooks/use-toast"
+import StatsCard from "../components/StatsCard"
+import RecentFilesList from "../components/RecentFilesList"
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -15,21 +15,54 @@ const Dashboard = () => {
   })
   const [recentFiles, setRecentFiles] = useState([])
   const [loading, setLoading] = useState(true)
-//   const { toast } = useToast()
+  const { toast } = useToast()
 
-  // useEffect(() => {
-  //   const fetchDashboardData = async () => {
-  //     try {
-  //       const token = localStorage.getItem("token")
-  //       // Fetch data...
-  //     } catch (error) {
-  //       // Error handling...
-  //     } finally {
-  //       setLoading(false)
-  //     }
-  //   }
-  //   fetchDashboardData()
-  // }, [toast])
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const token = localStorage.getItem("token")
+
+        // Fetch stats
+        const statsResponse = await fetch("http://localhost:5000/api/dashboard/stats", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        // Fetch recent files
+        const filesResponse = await fetch("http://localhost:5000/api/files/recent", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (statsResponse.ok && filesResponse.ok) {
+          const statsData = await statsResponse.json()
+          const filesData = await filesResponse.json()
+
+          setStats(statsData)
+          setRecentFiles(filesData.files)
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to load dashboard data",
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        console.error("Dashboard data fetch error:", error)
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred while loading dashboard",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [toast])
 
   if (loading) {
     return (
@@ -56,7 +89,7 @@ const Dashboard = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* <StatsCard 
+          <StatsCard 
             title="Total Files" 
             value={stats.totalFiles} 
             icon={
@@ -93,7 +126,7 @@ const Dashboard = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
               </svg>
             }
-          /> */}
+          />
         </div>
 
         {/* Recent Files Section */}
@@ -108,7 +141,7 @@ const Dashboard = () => {
             </Link>
           </div>
           <div className="divide-y divide-gray-200">
-            {/* {recentFiles.length > 0 ? (
+            {recentFiles.length > 0 ? (
               <RecentFilesList files={recentFiles} />
             ) : (
               <div className="px-6 py-12 text-center">
@@ -129,7 +162,7 @@ const Dashboard = () => {
                   </Link>
                 </div>
               </div>
-            )} */}
+            )}
           </div>
         </div>
 

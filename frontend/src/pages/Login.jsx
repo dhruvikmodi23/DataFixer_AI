@@ -15,7 +15,42 @@ const Login = ({ setUser }) => {
     e.preventDefault()
     setLoading(true)
     
-    // Add your authentication logic here
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        localStorage.setItem("token", data.token)
+        setUser(data.user)
+        toast({
+          title: "Login Successful",
+          description: "Welcome back!",
+        })
+        navigate("/dashboard")
+      } else {
+        toast({
+          title: "Login Failed",
+          description: data.message || "Invalid credentials",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Login error:", error)
+      toast({
+        title: "Login Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

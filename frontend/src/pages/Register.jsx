@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-// import { useToast } from "../hooks/use-toast"
+import { useToast } from "../hooks/use-toast"
 
 const Register = ({ setUser }) => {
   const [name, setName] = useState("")
@@ -11,12 +11,58 @@ const Register = ({ setUser }) => {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  // const { toast } = useToast()
+  const { toast } = useToast()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (password !== confirmPassword) {
+      toast({
+        title: "Password Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
-    // Add your registration logic here
+
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        localStorage.setItem("token", data.token)
+        setUser(data.user)
+        toast({
+          title: "Registration Successful",
+          description: "Your account has been created!",
+        })
+        navigate("/dashboard")
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: data.message || "Could not create account",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Registration error:", error)
+      toast({
+        title: "Registration Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+    
   }
 
   return (

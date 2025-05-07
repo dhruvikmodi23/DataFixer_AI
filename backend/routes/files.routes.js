@@ -1,5 +1,5 @@
 const express = require("express");
-const auth = require("../middleware/auth.middleware");
+const { auth } = require("../middleware/auth.middleware");
 const fileController = require("../controller/file.controller")
 const router = express.Router();
 
@@ -14,7 +14,8 @@ router.get("/recent", auth, fileController.recent);
 router.get("/:id", auth, fileController.getfilebyid);
 
 // Upload and process a file
-router.post("/upload", auth, fileController.uploadfile);
+router.post("/upload", auth, fileController.upload, fileController.uploadfile);
+
 
 // Download a file (original or fixed)
 router.get("/:id/download", auth, fileController.downloadfile );

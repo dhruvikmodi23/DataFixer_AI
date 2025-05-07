@@ -30,8 +30,7 @@ const FileDiffViewer = ({ originalContent, fixedContent, fileType, viewMode, sta
         }),
       )
     } else {
-      // Unified view - show only changed lines with context
-      const contextLines = 3 // Number of unchanged lines to show before and after changes
+      const contextLines = 3
       const diff = []
       let inChangeBlock = false
       let changeBlockStart = 0
@@ -46,7 +45,6 @@ const FileDiffViewer = ({ originalContent, fixedContent, fileType, viewMode, sta
             inChangeBlock = true
             changeBlockStart = Math.max(0, i - contextLines)
 
-            // Add context lines before the change
             for (let j = changeBlockStart; j < i; j++) {
               diff.push({
                 type: "context",
@@ -56,7 +54,6 @@ const FileDiffViewer = ({ originalContent, fixedContent, fileType, viewMode, sta
             }
           }
 
-          // Add the changed lines
           diff.push({
             type: "removed",
             lineNumber: i + 1,
@@ -71,14 +68,12 @@ const FileDiffViewer = ({ originalContent, fixedContent, fileType, viewMode, sta
             })
           }
         } else if (inChangeBlock) {
-          // Add context lines after the change
           diff.push({
             type: "context",
             lineNumber: i + 1,
             text: originalLine,
           })
 
-          // Check if we've added enough context lines
           if (i >= changeBlockStart + contextLines * 2) {
             inChangeBlock = false
           }
@@ -103,44 +98,44 @@ const FileDiffViewer = ({ originalContent, fixedContent, fileType, viewMode, sta
   if (status === "processing") {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
-        <p className="ml-4 text-gray-600">Processing file...</p>
+        <svg className="animate-spin h-8 w-8 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p className="ml-3 text-gray-600">Processing file...</p>
       </div>
     )
   }
 
   if (status === "failed") {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-md p-4">
+      <div className="bg-red-50 rounded-lg border border-red-200 p-4">
         <div className="flex">
-          <div className="flex-shrink-0">
-            <svg
-              className="h-5 w-5 text-red-400"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
+          <svg className="h-5 w-5 text-red-500 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
           <div className="ml-3">
             <h3 className="text-sm font-medium text-red-800">Processing Failed</h3>
-            <div className="mt-2 text-sm text-red-700">
+            <div className="mt-1 text-sm text-red-700">
               <p>We couldn't fix this file. It might be too corrupted or in an unsupported format.</p>
             </div>
           </div>
         </div>
 
-        <div className="mt-4 border border-red-200 rounded-md overflow-auto max-h-96">
+        <div className="mt-4 rounded-md overflow-hidden border border-red-100">
+          <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 border-b border-gray-200">
+            Original File Content
+          </div>
           <SyntaxHighlighter
             language={getLanguage()}
             style={tomorrow}
             showLineNumbers={true}
-            customStyle={{ margin: 0, borderRadius: "0.375rem" }}
+            customStyle={{ 
+              margin: 0, 
+              background: "white",
+              fontSize: "0.875rem",
+              lineHeight: "1.5"
+            }}
           >
             {originalContent || ""}
           </SyntaxHighlighter>
@@ -150,17 +145,29 @@ const FileDiffViewer = ({ originalContent, fixedContent, fileType, viewMode, sta
   }
 
   if (!originalContent) {
-    return <div className="text-center p-8 text-gray-500">No content available</div>
+    return (
+      <div className="bg-gray-50 rounded-lg border border-gray-200 p-8 text-center text-gray-500">
+        No content available
+      </div>
+    )
   }
 
   if (status !== "fixed" || !fixedContent) {
     return (
-      <div className="border border-gray-200 rounded-md overflow-auto max-h-96">
+      <div className="rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 border-b border-gray-200">
+          File Content
+        </div>
         <SyntaxHighlighter
           language={getLanguage()}
           style={tomorrow}
           showLineNumbers={true}
-          customStyle={{ margin: 0, borderRadius: "0.375rem" }}
+          customStyle={{ 
+            margin: 0, 
+            background: "white",
+            fontSize: "0.875rem",
+            lineHeight: "1.5"
+          }}
         >
           {originalContent}
         </SyntaxHighlighter>
@@ -170,24 +177,32 @@ const FileDiffViewer = ({ originalContent, fixedContent, fileType, viewMode, sta
 
   if (viewMode === "split") {
     return (
-      <div className="grid grid-cols-2 gap-4 border border-gray-200 rounded-md overflow-hidden">
-        <div className="overflow-auto max-h-96">
-          <div className="bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 border-b border-gray-200">
+      <div className="grid grid-cols-2 gap-0 rounded-lg border border-gray-200 overflow-hidden">
+        <div className="overflow-auto">
+          <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 border-b border-gray-200">
             Original
           </div>
-          <div className="p-4 font-mono text-sm">
+          <div className="p-4 font-mono text-sm bg-white">
             {diffLines.map((line, i) => (
-              <div key={`original-${i}`} className={`whitespace-pre ${line.original.changed ? "bg-red-100" : ""}`}>
+              <div 
+                key={`original-${i}`} 
+                className={`whitespace-pre ${line.original.changed ? "bg-red-50 text-red-800" : ""}`}
+              >
                 {line.original.text}
               </div>
             ))}
           </div>
         </div>
-        <div className="overflow-auto max-h-96 border-l border-gray-200">
-          <div className="bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 border-b border-gray-200">Fixed</div>
-          <div className="p-4 font-mono text-sm">
+        <div className="overflow-auto border-l border-gray-200">
+          <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 border-b border-gray-200">
+            Fixed
+          </div>
+          <div className="p-4 font-mono text-sm bg-white">
             {diffLines.map((line, i) => (
-              <div key={`fixed-${i}`} className={`whitespace-pre ${line.fixed.changed ? "bg-green-100" : ""}`}>
+              <div 
+                key={`fixed-${i}`} 
+                className={`whitespace-pre ${line.fixed.changed ? "bg-green-50 text-green-800" : ""}`}
+              >
                 {line.fixed.text}
               </div>
             ))}
@@ -196,21 +211,20 @@ const FileDiffViewer = ({ originalContent, fixedContent, fileType, viewMode, sta
       </div>
     )
   } else {
-    // Unified view
     return (
-      <div className="border border-gray-200 rounded-md overflow-auto max-h-96">
-        <div className="bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 border-b border-gray-200">
+      <div className="rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 border-b border-gray-200">
           Unified Diff
         </div>
-        <div className="p-4 font-mono text-sm">
+        <div className="p-4 font-mono text-sm bg-white">
           {diffLines.map((line, i) => (
             <div
               key={`diff-${i}`}
               className={`whitespace-pre ${
                 line.type === "removed"
-                  ? "bg-red-100 text-red-800"
+                  ? "bg-red-50 text-red-800"
                   : line.type === "added"
-                    ? "bg-green-100 text-green-800"
+                    ? "bg-green-50 text-green-800"
                     : ""
               }`}
             >

@@ -38,47 +38,45 @@ const upload = multer({
 
 // Helper function to process file with AI service
 async function processFile(fileId, content, fileType) {
-    try {
-      const startTime = Date.now();
-  
-      // Call AI service to fix the file
-      const response = await axios.post(
-        `${process.env.AI_SERVICE_URL || "http://localhost:8000"}/api/fix`,
-        {
-          content,
-          fileType,
-        }
-      );
-  
-      const processingTime = ((Date.now() - startTime) / 1000).toFixed(2);
-  
-      // Update file with results
-      if (response.data.success) {
-        await File.findByIdAndUpdate(fileId, {
-          status: "fixed",
-          fixedContent: response.data.fixedContent,
-          changes: response.data.changes || [],
-          processingTime,
-        });
-      } else {
-        await File.findByIdAndUpdate(fileId, {
-          status: "failed",
-          errorMessage: response.data.error || "Failed to fix file",
-          processingTime,
-        });
+  try {
+    const startTime = Date.now();
+
+    // Call AI service to fix the file
+    const response = await axios.post(
+      `${process.env.AI_SERVICE_URL || "http://localhost:8000"}/api/fix`,
+      {
+        content,
+        fileType,
       }
-    } catch (error) {
-      console.error("File processing error:", error);
-  
-      // Update file with error
+    );
+
+    const processingTime = ((Date.now() - startTime) / 1000).toFixed(2);
+
+    // Update file with results
+    if (response.data.success) {
+      await File.findByIdAndUpdate(fileId, {
+        status: "fixed",
+        fixedContent: response.data.fixedContent,
+        changes: response.data.changes || [],
+        processingTime,
+      });
+    } else {
       await File.findByIdAndUpdate(fileId, {
         status: "failed",
-        errorMessage: "Error processing file",
+        errorMessage: response.data.error || "Failed to fix file",
+        processingTime,
       });
     }
-  }
+  } catch (error) {
+    console.error("File processing error:", error);
 
-  
+    // Update file with error
+    await File.findByIdAndUpdate(fileId, {
+      status: "failed",
+      errorMessage: "Error processing file",
+    });
+  }
+}
 
 // Get all files for a user with pagination
 exports.getfiles = async (req, res) => {
@@ -156,7 +154,9 @@ exports.getfilebyid = async (req, res) => {
 };
 
 // Upload and process a file
-exports.uploadfile = upload.single("file"), async (req, res) => {
+exports.upload = upload.single("file");
+
+exports.uploadfile = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
@@ -260,6 +260,3 @@ exports.deletefile = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-
-

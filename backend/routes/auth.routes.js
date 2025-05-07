@@ -1,5 +1,5 @@
 const express = require("express");
-const auth = require("../middleware/auth.middleware");
+const {auth} = require("../middleware/auth.middleware");
 const authController = require("../controller/user.controller");
 
 const router = express.Router();
@@ -11,7 +11,7 @@ router.post("/register", authController.register);
 router.post("/login", authController.login);
 
 // Verify token and get user
-router.get("/verify", auth, authController.verify);
+router.get("/verify", auth , authController.verify);
 
 // Forgot password - send reset email
 router.post("/forgot-password", authController.forgotpassword);

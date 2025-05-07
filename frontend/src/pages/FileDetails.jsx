@@ -135,101 +135,157 @@ const FileDetails = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+      <div className="flex min-h-screen flex-col justify-center bg-gray-50 py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+          <div className="flex justify-center">
+            <svg className="h-12 w-12 text-emerald-600" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L1 12h3v9h6v-6h4v6h6v-9h3L12 2z" />
+            </svg>
+          </div>
+          <div className="mt-6">
+            <svg className="animate-spin mx-auto h-8 w-8 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="mt-4 text-gray-600">Loading file details...</p>
+          </div>
+        </div>
       </div>
     )
   }
 
   if (!file) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-md p-6 text-center">
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">File Not Found</h2>
-          <p className="text-gray-600 mb-4">The file you're looking for doesn't exist or has been deleted.</p>
-          <button
-            onClick={() => navigate("/history")}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-          >
-            Go to File History
-          </button>
+      <div className="flex min-h-screen flex-col justify-center bg-gray-50 py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="flex justify-center">
+            <svg className="h-12 w-12 text-emerald-600" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L1 12h3v9h6v-6h4v6h6v-9h3L12 2z" />
+            </svg>
+          </div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            DataFixer AI
+          </h2>
+        </div>
+
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 text-center">
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 className="mt-4 text-lg font-medium text-gray-900">File Not Found</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              The file you're looking for doesn't exist or has been deleted.
+            </p>
+            <div className="mt-6">
+              <button
+                onClick={() => navigate("/history")}
+                className="w-full flex justify-center rounded-md border border-transparent bg-emerald-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              >
+                Go to File History
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">File Details</h1>
-        <p className="text-gray-600">View and download your fixed file</p>
+    <div className="flex min-h-screen flex-col bg-gray-50 py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-7xl">
+        <div className="flex justify-center">
+          <svg className="h-12 w-12 text-emerald-600" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L1 12h3v9h6v-6h4v6h6v-9h3L12 2z" />
+          </svg>
+        </div>
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          DataFixer AI
+        </h2>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          View and download your fixed file
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-        <div className="lg:col-span-3">
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-800">{file.originalName}</h2>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setViewMode("split")}
-                  className={`px-3 py-1 text-sm rounded-md ${viewMode === "split" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600"}`}
-                >
-                  Split View
-                </button>
-                <button
-                  onClick={() => setViewMode("unified")}
-                  className={`px-3 py-1 text-sm rounded-md ${viewMode === "unified" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600"}`}
-                >
-                  Unified View
-                </button>
-              </div>
-            </div>
-
-            <FileDiffViewer
-              originalContent={file.originalContent}
-              fixedContent={file.fixedContent}
-              fileType={file.fileType}
-              viewMode={viewMode}
-              status={file.status}
-            />
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-7xl">
+        <div className="bg-white shadow sm:rounded-lg">
+          <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 className="text-lg font-medium leading-6 text-gray-900">{file.originalName}</h3>
           </div>
 
-          {file.status === "fixed" && file.changes && file.changes.length > 0 && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Changes Made</h2>
-              <ul className="space-y-2">
-                {file.changes.map((change, index) => (
-                  <li key={index} className="bg-gray-50 p-3 rounded-md">
-                    <div className="flex items-start">
-                      <span className="bg-emerald-100 text-emerald-800 text-xs font-medium px-2 py-1 rounded-full mr-2">
-                        Line {change.line}
-                      </span>
-                      <div>
-                        <p className="text-sm text-gray-800">{change.description}</p>
-                        {change.before && change.after && (
-                          <div className="mt-2 text-xs">
-                            <div className="bg-red-50 p-2 rounded-md mb-1 font-mono">- {change.before}</div>
-                            <div className="bg-green-50 p-2 rounded-md font-mono">+ {change.after}</div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-0">
+            <div className="lg:col-span-3 p-6 border-r border-gray-200">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-800">File Comparison</h2>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setViewMode("split")}
+                    className={`px-3 py-1 text-sm rounded-md ${viewMode === "split" ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                  >
+                    Split View
+                  </button>
+                  <button
+                    onClick={() => setViewMode("unified")}
+                    className={`px-3 py-1 text-sm rounded-md ${viewMode === "unified" ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                  >
+                    Unified View
+                  </button>
+                </div>
+              </div>
 
-        <div className="lg:col-span-1">
-          <FileMetadata file={file} />
-          <FileActions
-            file={file}
-            onDownloadOriginal={() => handleDownload("original")}
-            onDownloadFixed={() => handleDownload("fixed")}
-            onDelete={handleDelete}
-          />
+              <FileDiffViewer
+                originalContent={file.originalContent}
+                fixedContent={file.fixedContent}
+                fileType={file.fileType}
+                viewMode={viewMode}
+                status={file.status}
+              />
+
+              {file.status === "fixed" && file.changes && file.changes.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Changes Made</h2>
+                  <ul className="space-y-3">
+                    {file.changes.map((change, index) => (
+                      <li key={index} className="bg-gray-50 p-4 rounded-md">
+                        <div className="flex items-start">
+                          <span className="bg-emerald-600 text-white text-xs font-medium px-2.5 py-0.5 rounded-full mr-3">
+                            Line {change.line}
+                          </span>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-800">{change.description}</p>
+                            {change.before && change.after && (
+                              <div className="mt-2 text-xs space-y-1">
+                                <div className="bg-red-50 p-2 rounded-md font-mono flex">
+                                  <span className="text-red-500 mr-2">-</span>
+                                  <span>{change.before}</span>
+                                </div>
+                                <div className="bg-green-50 p-2 rounded-md font-mono flex">
+                                  <span className="text-green-500 mr-2">+</span>
+                                  <span>{change.after}</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="lg:col-span-1 p-6">
+              <FileMetadata file={file} />
+              <div className="mt-6">
+                <FileActions
+                  file={file}
+                  onDownloadOriginal={() => handleDownload("original")}
+                  onDownloadFixed={() => handleDownload("fixed")}
+                  onDelete={handleDelete}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

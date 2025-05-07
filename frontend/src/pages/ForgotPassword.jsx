@@ -2,18 +2,51 @@
 
 import { useState } from "react"
 import { Link } from "react-router-dom"
-// import { useToast } from "../hooks/use-toast"
+import { useToast } from "../hooks/use-toast"
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-//   const { toast } = useToast()
+  const { toast } = useToast()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    // Your existing submission logic
+    try {
+        const response = await fetch("http://localhost:5000/api/auth/forgot-password", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        })
+  
+        const data = await response.json()
+  
+        if (response.ok) {
+          setSubmitted(true)
+          toast({
+            title: "Email Sent",
+            description: "If an account exists with this email, you will receive a password reset link",
+          })
+        } else {
+          toast({
+            title: "Request Failed",
+            description: data.message || "Could not process your request",
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        console.error("Forgot password error:", error)
+        toast({
+          title: "Request Error",
+          description: "An unexpected error occurred. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
   }
 
   if (submitted) {
@@ -25,7 +58,8 @@ const ForgotPassword = () => {
               <path d="M12 2L1 12h3v9h6v-6h4v6h6v-9h3L12 2z" />
             </svg>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Check Your Email</h2>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">DataFixer AI</h2>
+          <h3 className="mt-2 text-center text-xl font-medium text-gray-900">Check Your Email</h3>
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
@@ -46,7 +80,7 @@ const ForgotPassword = () => {
             <div className="mt-6">
               <Link
                 to="/login"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                className="flex w-full justify-center rounded-md border border-transparent bg-emerald-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
               >
                 Return to Login
               </Link>
@@ -65,9 +99,11 @@ const ForgotPassword = () => {
             <path d="M12 2L1 12h3v9h6v-6h4v6h6v-9h3L12 2z" />
           </svg>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Reset your password</h2>
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          DataFixer AI
+        </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Enter your email and we'll send you a link to reset your password
+          Enter your email to reset your password
         </p>
       </div>
 
@@ -97,11 +133,11 @@ const ForgotPassword = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="flex w-full justify-center rounded-md border border-transparent bg-emerald-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="-ml-1 mr-3 h-5 w-5 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -127,7 +163,7 @@ const ForgotPassword = () => {
             <div className="mt-6">
               <Link
                 to="/login"
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                className="flex w-full justify-center rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
               >
                 Sign in
               </Link>
