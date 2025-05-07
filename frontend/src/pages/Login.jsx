@@ -14,6 +14,7 @@ const Login = ({ setUser }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+    
     // Add your authentication logic here
   }
 
@@ -89,7 +90,7 @@ const Login = ({ setUser }) => {
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-emerald-600 hover:text-emerald-500">
+                <a href="/forgot-password" className="font-medium text-emerald-600 hover:text-emerald-500">
                   Forgot password?
                 </a>
               </div>
