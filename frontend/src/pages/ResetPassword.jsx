@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Link, useParams, useNavigate } from "react-router-dom"
-// import { useToast } from "../hooks/use-toast"
+import { useToast } from "../hooks/use-toast"
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("")
@@ -14,12 +14,84 @@ const ResetPassword = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  
+  useEffect(() => {
+    // Verify token validity
+    const verifyToken = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/api/auth/verify-reset-token/${token}`)
+
+        if (response.ok) {
+          setTokenValid(true)
+        } else {
+          toast({
+            title: "Invalid or Expired Link",
+            description: "This password reset link is invalid or has expired.",
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        console.error("Token verification error:", error)
+        toast({
+          title: "Verification Error",
+          description: "Could not verify reset link. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setVerifying(false)
+      }
+    }
+
+    verifyToken()
+  }, [token, toast])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-   
+    if (password !== confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "Passwords do not match. Please try again.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token, password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Password Reset Successful",
+          description: "Your password has been reset. You can now log in with your new password.",
+        })
+        navigate("/login")
+      } else {
+        toast({
+          title: "Reset Failed",
+          description: data.message || "Could not reset password",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Password reset error:", error)
+      toast({
+        title: "Reset Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (verifying) {
