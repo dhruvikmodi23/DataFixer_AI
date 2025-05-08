@@ -1,4 +1,4 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
 const FileSchema = new mongoose.Schema({
   user: {
@@ -18,17 +18,17 @@ const FileSchema = new mongoose.Schema({
   fileSize: {
     type: Number,
   },
+  originalContentUrl: {
+    type: String,
+    required: true,
+  },
+  fixedContentUrl: {
+    type: String,
+  },
   status: {
     type: String,
     enum: ["processing", "fixed", "failed"],
     default: "processing",
-  },
-  originalContent: {
-    type: String,
-    required: true,
-  },
-  fixedContent: {
-    type: String,
   },
   changes: [
     {
@@ -48,11 +48,11 @@ const FileSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-})
+});
 
 // Index for faster queries
-FileSchema.index({ user: 1, createdAt: -1 })
-FileSchema.index({ fileType: 1 })
-FileSchema.index({ status: 1 })
+FileSchema.index({ user: 1, createdAt: -1 });
+FileSchema.index({ fileType: 1 });
+FileSchema.index({ status: 1 });
 
-module.exports = mongoose.model("File", FileSchema)
+module.exports = mongoose.model("File", FileSchema);

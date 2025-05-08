@@ -35,6 +35,58 @@ app.use("/api/files", fileRoutes)
 app.use("/api/dashboard", dashboardRoutes)
 
 
+// error handling middleware stack
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        success: false,
+        message: 'File size exceeds the 5MB limit'
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
+  next(err);
+});
+
+
+// Proxy requests to Python AI service
+app.use(
+  "/api/ai",
+  createProxyMiddleware({
+    target: process.env.AI_SERVICE_URL || "http://localhost:8000",
+    changeOrigin: true,
+    pathRewrite: {
+      "^/api/ai": "/api",
+    },
+  }),
+)
+
+
+
+// Serve static files in production
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/dist")))
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend/dist/index.html"))
+  })
+}
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack)
+  res.status(500).json({
+    message: "Something went wrong!",
+    error: process.env.NODE_ENV === "development" ? err.message : undefined,
+  })
+})
+
+
+
 // Start server
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
