@@ -2,39 +2,32 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
+import numpy as np
 import json
 import traceback
-import time
-from typing import List, Dict, Any, Optional, Union
-from transformers import AutoModelForCausalLM, AutoTokenizer
 import re
+import csv
+from io import StringIO
+from typing import List, Dict, Any, Optional, Union
+from collections import Counter
+from statistics import mode
+from datetime import datetime
 
-app = FastAPI(title="DataFixer AI Service")
+app = FastAPI(title="DataFixer Pro Service")
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load AI model for text repair
-try:
-    model_name = "gpt2"  # Using a smaller model for demonstration
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    print(f"Loaded model: {model_name}")
-except Exception as e:
-    print(f"Error loading model: {e}")
-    # Fallback to rule-based repair if model loading fails
-    model = None
-    tokenizer = None
-
 class FileRequest(BaseModel):
     content: str
     fileType: str
+    impute_strategy: Optional[str] = "auto"  # auto, median, mode, zero, empty
 
 class ChangeRecord(BaseModel):
     line: int
@@ -50,21 +43,21 @@ class FileResponse(BaseModel):
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "healthy", "model_loaded": model is not None}
+    return {"status": "healthy", "optimized": True}
 
 @app.post("/api/fix", response_model=FileResponse)
 async def fix_file(request: FileRequest):
     try:
-        content = request.content
+        content = request.content.strip()
+        if not content:
+            return FileResponse(success=False, error="Empty content provided")
+            
         file_type = request.fileType.lower()
         
-        # Add artificial delay for demo purposes
-        time.sleep(2)
-        
         if file_type == "csv":
-            return fix_csv(content)
+            return fix_csv(content, request.impute_strategy)
         elif file_type == "json":
-            return fix_json(content)
+            return fix_json(content, request.impute_strategy)
         else:
             return FileResponse(
                 success=False,
@@ -78,181 +71,287 @@ async def fix_file(request: FileRequest):
             error=f"Error processing file: {str(e)}"
         )
 
-def fix_csv(content: str) -> FileResponse:
-    # Common CSV errors to fix
-    changes = []
-    lines = content.split('\n')
-    fixed_lines = []
-    
-    # Track if we need to add missing quotes
-    missing_quotes = False
-    
-    # Check for common delimiter issues
-    delimiter = ','
-    if content.count(';') > content.count(','):
-        delimiter = ';'
-    
-    for i, line in enumerate(lines):
-        original_line = line
-        fixed_line = line
+def detect_delimiter(content: str) -> str:
+    """Optimized delimiter detection with priority"""
+    sample = content[:2048]  # Check first 2KB
+    delimiters = [',', ';', '\t', '|', ':']
+    for delim in delimiters:
+        if sample.count(delim) > sample.count('\n'):
+            return delim
+    return ','  # default
+
+def analyze_column_stats(df: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
+    """Analyze all columns at once to determine optimal fill values"""
+    stats = {}
+    for col in df.columns:
+        non_null = df[col].dropna()
+        col_stats = {
+            'dtype': str(df[col].dtype),
+            'null_count': df[col].isna().sum(),
+            'unique_count': non_null.nunique(),
+            'sample_values': non_null.head(2).tolist() if not non_null.empty else []
+        }
         
-        # Fix 1: Handle uneven number of quotes
-        quote_count = line.count('"')
-        if quote_count % 2 != 0:
-            fixed_line = fixed_line.replace('"', '')
-            changes.append(ChangeRecord(
-                line=i+1,
-                description="Removed unbalanced quotes",
-                before=original_line,
-                after=fixed_line
-            ))
+        if pd.api.types.is_numeric_dtype(df[col]):
+            col_stats.update({
+                'median': non_null.median() if not non_null.empty else None,
+                'mean': non_null.mean() if not non_null.empty else None,
+                'min': non_null.min() if not non_null.empty else None,
+                'max': non_null.max() if not non_null.empty else None
+            })
         
-        # Fix 2: Fix missing commas between fields
-        if delimiter in fixed_line:
-            # Look for patterns like "value"value instead of "value",value
-            fixed_line = re.sub(r'([^' + delimiter + '])"([^' + delimiter + '])', r'\1"' + delimiter + r'\2', fixed_line)
-            if fixed_line != original_line and fixed_line != line:
-                changes.append(ChangeRecord(
-                    line=i+1,
-                    description=f"Added missing {delimiter} between fields",
-                    before=original_line,
-                    after=fixed_line
-                ))
+        if len(non_null) > 0:
+            try:
+                col_stats['mode'] = mode(non_null.dropna().astype(str).tolist())
+            except:
+                col_stats['mode'] = non_null.iloc[0]
         
-        # Fix 3: Handle inconsistent delimiters
-        if delimiter == ',' and ';' in fixed_line:
-            fixed_line = fixed_line.replace(';', ',')
-            if fixed_line != original_line and fixed_line != line:
-                changes.append(ChangeRecord(
-                    line=i+1,
-                    description="Replaced semicolons with commas",
-                    before=original_line,
-                    after=fixed_line
-                ))
-        
-        fixed_lines.append(fixed_line)
-    
-    # Try to parse with pandas to catch any remaining issues
+        stats[col] = col_stats
+    return stats
+
+def get_fill_values(stats: Dict[str, Dict[str, Any]], strategy: str) -> Dict[str, Any]:
+    """Determine fill values based on global analysis"""
+    fill_values = {}
+    for col, col_stats in stats.items():
+        if col_stats['null_count'] == 0:
+            continue
+            
+        if strategy == "median" and 'median' in col_stats:
+            fill_values[col] = col_stats['median']
+        elif strategy == "mode" and 'mode' in col_stats:
+            fill_values[col] = col_stats['mode']
+        elif strategy == "zero" and pd.api.types.is_numeric_dtype(col_stats['dtype']):
+            fill_values[col] = 0
+        elif strategy == "empty":
+            fill_values[col] = ""
+        else:  # auto
+            if pd.api.types.is_numeric_dtype(col_stats['dtype']):
+                fill_values[col] = col_stats.get('median', 0)
+            else:
+                fill_values[col] = col_stats.get('mode', "")
+    return fill_values
+
+def fix_csv(content: str, strategy: str) -> FileResponse:
     try:
-        df = pd.read_csv(pd.StringIO('\n'.join(fixed_lines)), delimiter=delimiter)
-        # If successful, convert back to CSV
-        fixed_content = df.to_csv(index=False)
+        # Parse CSV with optimized settings
+        df = pd.read_csv(
+            StringIO(content),
+            delimiter=detect_delimiter(content),
+            engine='c',
+            na_values=['', 'NA', 'NULL', 'NaN', 'None', 'none', 'null', '?', '-'],
+            keep_default_na=True,
+            true_values=['TRUE', 'True', 'true', 'T', 't', '1', 'YES', 'Yes', 'yes', 'Y', 'y'],
+            false_values=['FALSE', 'False', 'false', 'F', 'f', '0', 'NO', 'No', 'no', 'N', 'n'],
+            skipinitialspace=True,
+            dtype=None,
+            parse_dates=True,
+            infer_datetime_format=True
+        )
         
-        # Add a change record if pandas fixed additional issues
-        if fixed_content != '\n'.join(fixed_lines):
+        # First pass: analyze all columns
+        stats = analyze_column_stats(df)
+        fill_values = get_fill_values(stats, strategy)
+        
+        # Generate changes report
+        changes = []
+        for col, fill_val in fill_values.items():
+            null_count = stats[col]['null_count']
             changes.append(ChangeRecord(
                 line=0,
-                description="Fixed structural CSV issues",
-                before=content,
-                after=fixed_content
+                description=f"Imputed {null_count} nulls in '{col}' with {fill_val} ({strategy})",
+                before=f"{null_count} nulls",
+                after=str(fill_val)
             ))
-    except Exception as e:
-        # If pandas fails, return our best attempt
-        fixed_content = '\n'.join(fixed_lines)
-    
-    return FileResponse(
-        success=True,
-        fixedContent=fixed_content,
-        changes=changes
-    )
-
-def fix_json(content: str) -> FileResponse:
-    changes = []
-    
-    # Common JSON errors to fix
-    try:
-        # First try to parse as is
-        json.loads(content)
-        # If it works, no changes needed
+        
+        # Fill all missing values in one operation
+        if fill_values:
+            df = df.fillna(fill_values)
+        
+        # Convert back to CSV with optimized settings
+        with StringIO() as buffer:
+            df.to_csv(
+                buffer,
+                index=False,
+                encoding='utf-8',
+                quoting=csv.QUOTE_MINIMAL,
+                quotechar='"',
+                escapechar='\\' if any('"' in str(x) for x in df.values.ravel()) else None
+            )
+            fixed_content = buffer.getvalue()
+        
         return FileResponse(
             success=True,
-            fixedContent=content,
-            changes=[]
+            fixedContent=fixed_content,
+            changes=changes
+        )
+    except Exception as e:
+        return FileResponse(
+            success=False,
+            error=f"CSV processing failed: {str(e)}"
+        )
+
+def analyze_json_structure(data: Any) -> Dict[str, Any]:
+    """Analyze JSON structure to determine value types and patterns"""
+    if isinstance(data, dict):
+        return {k: analyze_json_structure(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        if data:
+            return [analyze_json_structure(data[0])]  # Just analyze first element for patterns
+        return []
+    else:
+        return {
+            'type': type(data).__name__,
+            'value': data
+        }
+
+def get_json_fill_value(samples: List[Any], strategy: str) -> Any:
+    """Determine fill value based on sample values"""
+    if not samples:
+        return "" if strategy != "zero" else 0
+    
+    first_type = type(samples[0])
+    
+    # Check if all samples are of same type
+    consistent_type = all(isinstance(x, first_type) for x in samples)
+    
+    if strategy == "median" and consistent_type and isinstance(samples[0], (int, float)):
+        return np.median(samples)
+    elif strategy == "mode":
+        try:
+            return mode(samples)
+        except:
+            return samples[0]
+    elif strategy == "zero" and consistent_type and isinstance(samples[0], (int, float)):
+        return 0
+    elif strategy == "empty":
+        return ""
+    else:  # auto
+        if consistent_type:
+            if isinstance(samples[0], (int, float)):
+                return np.median(samples)
+            elif isinstance(samples[0], str):
+                return mode(samples) if len(samples) > 1 else samples[0]
+            elif isinstance(samples[0], bool):
+                return False
+        return samples[0] if samples else ""
+
+def json_impute(data: Any, fill_values: Dict[str, Any], path: str = "", changes: List[ChangeRecord] = None) -> Any:
+    """Iterative JSON imputation using pre-determined fill values"""
+    if changes is None:
+        changes = []
+    
+    if isinstance(data, dict):
+        for k, v in data.items():
+            current_path = f"{path}.{k}" if path else k
+            if v is None and current_path in fill_values:
+                changes.append(ChangeRecord(
+                    line=0,
+                    description=f"Imputed null at {current_path}",
+                    before="null",
+                    after=str(fill_values[current_path])
+                ))
+                data[k] = fill_values[current_path]
+            else:
+                data[k] = json_impute(v, fill_values, current_path, changes)
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            current_path = f"{path}[{i}]"
+            if item is None and path in fill_values:  # Use parent path for arrays
+                changes.append(ChangeRecord(
+                    line=0,
+                    description=f"Imputed null at {current_path}",
+                    before="null",
+                    after=str(fill_values[path])
+                ))
+                data[i] = fill_values[path]
+            else:
+                data[i] = json_impute(item, fill_values, current_path, changes)
+    return data
+
+def collect_null_paths(data: Any, path: str = "", null_paths: Dict[str, List[Any]] = None) -> Dict[str, List[Any]]:
+    """Collect all null paths and their context"""
+    if null_paths is None:
+        null_paths = {}
+    
+    if isinstance(data, dict):
+        for k, v in data.items():
+            current_path = f"{path}.{k}" if path else k
+            if v is None:
+                null_paths.setdefault(current_path, []).append(None)
+            else:
+                collect_null_paths(v, current_path, null_paths)
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            current_path = f"{path}[{i}]"
+            if item is None:
+                null_paths.setdefault(path, []).append(None)  # Track parent path for arrays
+            else:
+                collect_null_paths(item, current_path, null_paths)
+    return null_paths
+
+def fix_json(content: str, strategy: str) -> FileResponse:
+    try:
+        parsed = json.loads(content)
+        
+        # First pass: analyze null locations and their context
+        null_paths = collect_null_paths(parsed)
+        
+        # Second pass: collect sample values for each null path
+        sample_values = {}
+        for path in null_paths.keys():
+            # Get non-null siblings or neighbors
+            parts = path.split('.')
+            current = parsed
+            for part in parts[:-1]:
+                if '[' in part and ']' in part:
+                    key, idx = part.split('[')
+                    idx = int(idx[:-1])
+                    current = current[key][idx]
+                else:
+                    current = current[part]
+            
+            last_part = parts[-1]
+            if '[' in last_part and ']' in last_part:
+                # Array case - use parent's other values
+                key, idx = last_part.split('[')
+                idx = int(idx[:-1])
+                samples = [x for x in current[key] if x is not None]
+            else:
+                # Object case - use other properties
+                if isinstance(current, dict):
+                    samples = [v for k, v in current.items() if v is not None and k != last_part]
+                else:
+                    samples = []
+            
+            sample_values[path] = samples
+        
+        # Determine fill values for each path
+        fill_values = {}
+        for path, samples in sample_values.items():
+            fill_values[path] = get_json_fill_value(samples, strategy)
+        
+        # Perform imputation
+        fixed_data, changes = json_impute(parsed, fill_values), []
+        
+        # Generate optimized JSON output
+        compact = len(content) > 1024  # Compact if large
+        fixed_content = json.dumps(
+            fixed_data,
+            indent=None if compact else 2,
+            ensure_ascii=False,
+            separators=(',', ':') if compact else None
+        )
+        
+        return FileResponse(
+            success=True,
+            fixedContent=fixed_content,
+            changes=changes
         )
     except json.JSONDecodeError as e:
-        # Get error details
-        error_msg = str(e)
-        line_no = getattr(e, 'lineno', 0)
-        col_no = getattr(e, 'colno', 0)
-        
-        # Fix common JSON errors
-        fixed_content = content
-        
-        # Fix 1: Missing quotes around keys
-        fixed_content = re.sub(r'([{,]\s*)([a-zA-Z0-9_]+)(\s*:)', r'\1"\2"\3', fixed_content)
-        
-        # Fix 2: Trailing commas in arrays/objects
-        fixed_content = re.sub(r',(\s*[\]}])', r'\1', fixed_content)
-        
-        # Fix 3: Missing quotes around string values
-        fixed_content = re.sub(r':\s*([a-zA-Z][a-zA-Z0-9_]*)\s*([,}])', r': "\1"\2', fixed_content)
-        
-        # Fix 4: Single quotes instead of double quotes
-        fixed_content = fixed_content.replace("'", '"')
-        
-        # Record changes if we made any
-        if fixed_content != content:
-            changes.append(ChangeRecord(
-                line=line_no,
-                description=f"Fixed JSON syntax error: {error_msg}",
-                before=content,
-                after=fixed_content
-            ))
-        
-        # Try to parse the fixed content
-        try:
-            parsed = json.loads(fixed_content)
-            # If successful, pretty print it
-            fixed_content = json.dumps(parsed, indent=2)
-            return FileResponse(
-                success=True,
-                fixedContent=fixed_content,
-                changes=changes
-            )
-        except json.JSONDecodeError:
-            # If still failing, try AI-based repair if model is available
-            if model and tokenizer:
-                try:
-                    # Use AI model to suggest fixes
-                    prompt = f"Fix this invalid JSON:\n{content}\n\nValid JSON:"
-                    inputs = tokenizer(prompt, return_tensors="pt")
-                    outputs = model.generate(
-                        inputs["input_ids"],
-                        max_length=1024,
-                        temperature=0.7,
-                        top_p=0.9,
-                        do_sample=True
-                    )
-                    ai_suggestion = tokenizer.decode(outputs[0], skip_special_tokens=True)
-                    
-                    # Extract just the JSON part from the response
-                    json_match = re.search(r'Valid JSON:(.*?)($|```)', ai_suggestion, re.DOTALL)
-                    if json_match:
-                        ai_fixed = json_match.group(1).strip()
-                        # Verify it's valid JSON
-                        try:
-                            json.loads(ai_fixed)
-                            changes.append(ChangeRecord(
-                                line=0,
-                                description="Used AI to fix complex JSON issues",
-                                before=content,
-                                after=ai_fixed
-                            ))
-                            return FileResponse(
-                                success=True,
-                                fixedContent=ai_fixed,
-                                changes=changes
-                            )
-                        except:
-                            pass
-                except Exception as ai_error:
-                    print(f"AI repair failed: {ai_error}")
-            
-            # If all else fails
-            return FileResponse(
-                success=False,
-                error=f"Could not fix JSON: {error_msg}"
-            )
+        return FileResponse(
+            success=False,
+            error=f"JSON parsing failed: {str(e)}"
+        )
 
 if __name__ == "__main__":
     import uvicorn
